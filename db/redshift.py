@@ -3,9 +3,9 @@ import psycopg2
 def get_redshift_connection():
     return psycopg2.connect(
         dbname="heads01",
-        user="svc-scoutapp-ro",
-        password="sd38Gh4TeW",  # replace with your password
-        host="abo-edmprod01.cq3dszk4zmku.us-west-2.redshift.amazonaws.com",
+        user="fdsfdsfdro",
+        password="fdsfdsfds",  # replace with your password
+        host="abo-fdsfdsfdamazonaws.com",
         port="5439"
     )
 

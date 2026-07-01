@@ -1,0 +1,4 @@
+.env
+__pycache__
+heads01.db
+venv310
