@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RelMap — Schema Model View</title>
+
+  <!-- All JS served locally — no CDN required -->
+  <script src="vendor/cytoscape.min.js"></script>
+  <script src="vendor/cytoscape-node-html-label.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1b2a;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e9ecef;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      background: #111f30;
+      border-bottom: 1px solid #1e3050;
+      flex-shrink: 0;
+    }
+
+    #toolbar h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #74c0fc;
+      letter-spacing: 0.5px;
+      margin-right: auto;
+    }
+
+    button {
+      padding: 6px 14px;
+      border-radius: 5px;
+      border: 1px solid #3b5bdb;
+      background: #1c2d4f;
+      color: #a5c8ff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover   { background: #263d6b; }
+    button:active  { background: #1a2f58; }
+    button:disabled { opacity: 0.5; cursor: default; }
+
+    #cy { flex: 1; width: 100%; }
+
+    /* ── Table card HTML labels ── */
+    .table-card {
+      background: #1a2740;
+      border: 2px solid #3b5bdb;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      pointer-events: none;
+    }
+    .table-header {
+      background: #2c4a7c;
+      padding: 7px 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid #3b5bdb;
+    }
+    .table-icon  { font-size: 13px; color: #74c0fc; flex-shrink: 0; }
+    .table-name  { font-size: 12px; font-weight: 700; color: #e9ecef; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .table-schema { font-size: 10px; color: #74c0fc; background: #1a3259; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; }
+    .table-cols  { padding: 4px 0; }
+    .col-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 3px 10px; font-size: 11px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .col-row:last-child { border-bottom: none; }
+    .col-icon  { color: #868e96; font-size: 9px; flex-shrink: 0; }
+    .col-name  { color: #ced4da; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .col-type  { color: #5c7a9e; font-size: 10px; flex-shrink: 0; font-style: italic; }
+
+    /* ── Right-click context menu ── */
+    #ctx-menu {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      background: #1a2740;
+      border: 1px solid #3b5bdb;
+      border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      overflow: hidden;
+      min-width: 160px;
+    }
+    #ctx-menu div {
+      padding: 9px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #e9ecef;
+    }
+    #ctx-menu div:hover { background: #263d6b; }
+    #ctx-delete { color: #ff6b6b !important; }
+    #ctx-delete:hover { background: #3d1a1a !important; }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <h1>⬡ RelMap — Model View</h1>
+    <button id="loadBtn" onclick="loadSchema()">Load Schema</button>
+    <button onclick="cy.fit()">Fit View</button>
+    <button onclick="cy.zoom(cy.zoom() * 1.2)">Zoom +</button>
+    <button onclick="cy.zoom(cy.zoom() * 0.8)">Zoom −</button>
+  </div>
+
+  <div id="cy"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
