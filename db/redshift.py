@@ -1,12 +1,17 @@
+import os
 import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_redshift_connection():
     return psycopg2.connect(
-        dbname="heads01",
-        user="fdsfdsfdro",
-        password="fdsfdsfds",  # replace with your password
-        host="abo-fdsfdsfdamazonaws.com",
-        port="5439"
+        dbname=os.environ["REDSHIFT_HEADS_DB"],
+        user=os.environ["REDSHIFT_HEADS_USER"],
+        password=os.environ["scout-ro-password"],
+        host=os.environ["REDSHIFT_HEADS_HOST"],
+        port=os.environ["REDSHIFT_HEADS_PORT"],
+        connect_timeout=int(os.environ["REDSHIFT_HEADS_TIMEOUT_SECONDS"]),
     )
 
 def fetch_table_columns(full_name: str):
@@ -29,3 +34,21 @@ def fetch_table_columns(full_name: str):
     cols = cur.fetchall()
     conn.close()
     return cols
+
+def fetch_schema_tree():
+    conn = get_redshift_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT table_schema, table_name
+        FROM SVV_TABLES
+        WHERE table_type = 'TABLE'
+          AND table_schema NOT IN ('pg_catalog', 'pg_internal', 'information_schema')
+        ORDER BY table_schema, table_name
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    tree = {}
+    for schema, table in rows:
+        tree.setdefault(schema, []).append(table)
+    return tree

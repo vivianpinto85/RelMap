@@ -86,3 +86,9 @@ def fetch_ddl(request: TableList):
         ddl_map[full_name] = ddl
 
     return {"status": "ok", "ddls": ddl_map}
+
+
+@router.get("/redshift/tables")
+def get_redshift_tables():
+    from db.redshift import fetch_schema_tree
+    return {"schemas": fetch_schema_tree()}

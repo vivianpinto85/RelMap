@@ -570,7 +570,7 @@ async function loadSchema() {
   if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
 
   try {
-    const res  = await fetch('/schema/scan');
+    const res  = await fetch('/scan');
     if (!res.ok) throw new Error(`Server error ${res.status}`);
     const data = await res.json();
 
