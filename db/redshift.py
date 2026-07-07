@@ -35,7 +35,7 @@ def fetch_table_columns(full_name: str):
     conn.close()
     return cols
 
-def fetch_schema_tree():
+def fetch_schema_tree1():
     conn = get_redshift_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -46,6 +46,24 @@ def fetch_schema_tree():
         ORDER BY table_schema, table_name
     """)
     rows = cur.fetchall()
+    conn.close()
+
+    tree = {}
+    for schema, table in rows:
+        tree.setdefault(schema, []).append(table)
+    return tree
+
+def fetch_schema_tree():
+    conn = get_redshift_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT table_schema, table_name
+        FROM SVV_TABLES
+        WHERE table_schema NOT IN ('pg_catalog', 'pg_internal', 'information_schema')
+        ORDER BY table_schema, table_name
+    """)
+    rows = cur.fetchall()
+    #print(f"[DEBUG] fetch_schema_tree got {len(rows)} rows: {rows[:5]}")
     conn.close()
 
     tree = {}
