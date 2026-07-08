@@ -10,6 +10,12 @@ function nodeHeight(columns) {
   return HEAD_H + Math.max(1, columns.length) * ROW_H;
 }
 
+// ── Per-node custom sizes (for resize feature) ──────────────────────────────
+const nodeSizes = {}; // { [nodeId]: { width, height } }
+const MIN_W = 160;
+const MIN_H = 80;
+let resizeState = null; // { tableId, startX, startY, startW, startH, zoom }
+
 // ── Cytoscape init ───────────────────────────────────────────────────────────
 let cy = cytoscape({
   container: document.getElementById('cy'),
@@ -57,74 +63,98 @@ function modelToScreen(x, y) {
 function renderCards() {
   cardLayer.innerHTML = '';
   cy.nodes().forEach(node => {
-    const data   = node.data();
-    const pos    = node.position();
-    const cols   = data.columns || [];
-    const H      = nodeHeight(cols);
-    const screen = modelToScreen(pos.x - NODE_W / 2, pos.y - H / 2);
-    const zoom   = cy.zoom();
+    const data = node.data();
+    const pos = node.position();
+    const cols = data.columns || [];
+
+    const size = nodeSizes[data.id] || {};
+    const W = size.width  || NODE_W;
+    const H = size.height || nodeHeight(cols);
+
+    const screen = modelToScreen(pos.x - W / 2, pos.y - H / 2);
+    const zoom = cy.zoom();
 
     const card = document.createElement('div');
-    card.className  = 'table-card';
+    card.className = 'table-card';
     card.dataset.id = data.id;
     card.style.cssText = `
-      position:absolute;
-      left:${screen.x}px; top:${screen.y}px;
-      width:${NODE_W * zoom}px; height:${H * zoom}px;
-      pointer-events:auto;
-      border:2px solid #3b5bdb; border-radius:6px;
-      overflow:hidden; background:#1a2740;
-      box-shadow:0 4px 16px rgba(0,0,0,0.5);
-      font-family:'Segoe UI',system-ui,sans-serif;
-      cursor:grab; user-select:none;
-    `;
+position:absolute;
+left:${screen.x}px; top:${screen.y}px;
+width:${W * zoom}px; height:${H * zoom}px;
+pointer-events:auto;
+border:2px solid #3b5bdb; border-radius:6px;
+overflow:hidden; background:#1a2740;
+box-shadow:0 4px 16px rgba(0,0,0,0.5);
+font-family:'Segoe UI',system-ui,sans-serif;
+cursor:grab; user-select:none;
+display:flex; flex-direction:column;
+`;
 
     // Header
     const header = document.createElement('div');
     header.style.cssText = `
-      background:#2c4a7c;
-      padding:0 ${zoom*10}px;
-      display:flex; align-items:center; gap:${zoom*6}px;
-      border-bottom:1px solid #3b5bdb;
-      height:${HEAD_H*zoom}px; box-sizing:border-box;
-      flex-shrink:0;
-    `;
+background:#2c4a7c;
+padding:0 ${zoom*10}px;
+display:flex; align-items:center; gap:${zoom*6}px;
+border-bottom:1px solid #3b5bdb;
+height:${HEAD_H*zoom}px; box-sizing:border-box;
+flex-shrink:0;
+`;
     header.innerHTML = `
-      <span style="color:#74c0fc;font-size:${zoom*13}px">⊞</span>
-      <span style="font-weight:700;color:#e9ecef;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:${zoom*12}px">${data.table}</span>
-      <span style="font-size:${zoom*10}px;color:#74c0fc;background:#1a3259;padding:1px ${zoom*5}px;border-radius:3px;flex-shrink:0">${data.schema}</span>
-    `;
+<span style="color:#74c0fc;font-size:${zoom*13}px">⊞</span>
+<span style="font-weight:700;color:#e9ecef;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:${zoom*12}px">${data.table}</span>
+<span style="font-size:${zoom*10}px;color:#74c0fc;background:#1a3259;padding:1px ${zoom*5}px;border-radius:3px;flex-shrink:0">${data.schema}</span>
+`;
     card.appendChild(header);
 
-    // Column rows — each gets data-col attribute for drag targeting
+    // Column rows — scrollable container so overflow doesn't grow the card
+    const colList = document.createElement('div');
+    colList.className = 'col-list';
+    colList.style.cssText = `flex:1; overflow-y:auto; overflow-x:hidden;`;
+
     if (cols.length === 0) {
       const empty = document.createElement('div');
       empty.style.cssText = `padding:${zoom*6}px ${zoom*10}px;font-size:${zoom*11}px;color:#5c7a9e;font-style:italic`;
       empty.textContent = 'no columns';
-      card.appendChild(empty);
+      colList.appendChild(empty);
     } else {
       cols.forEach((c, i) => {
         const row = document.createElement('div');
-        row.className       = 'col-row-el';
-        row.dataset.col     = c.name;
+        row.className = 'col-row-el';
+        row.dataset.col = c.name;
         row.dataset.tableId = data.id;
         row.style.cssText = `
-          display:flex; align-items:center; gap:${zoom*6}px;
-          padding:0 ${zoom*10}px; height:${ROW_H*zoom}px;
-          font-size:${zoom*11}px;
-          border-bottom:1px solid rgba(255,255,255,0.04);
-          background:${i%2===0?'#1a2740':'#1e2e4a'};
-          box-sizing:border-box; cursor:crosshair;
-          transition:background 0.1s;
-        `;
+display:flex; align-items:center; gap:${zoom*6}px;
+padding:0 ${zoom*10}px; height:${ROW_H*zoom}px;
+font-size:${zoom*11}px;
+border-bottom:1px solid rgba(255,255,255,0.04);
+background:${i%2===0?'#1a2740':'#1e2e4a'};
+box-sizing:border-box; cursor:crosshair;
+transition:background 0.1s;
+flex-shrink:0;
+`;
         row.innerHTML = `
-          <span style="color:#868e96;font-size:${zoom*9}px">▸</span>
-          <span style="color:#ced4da;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span>
-          <span style="color:#5c7a9e;font-size:${zoom*10}px;font-style:italic">${c.type}</span>
-        `;
-        card.appendChild(row);
+<span style="color:#868e96;font-size:${zoom*9}px">▸</span>
+<span style="color:#ced4da;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span>
+<span style="color:#5c7a9e;font-size:${zoom*10}px;font-style:italic">${c.type}</span>
+`;
+        colList.appendChild(row);
       });
     }
+    card.appendChild(colList);
+
+    // Resize handle (bottom-right corner)
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.dataset.tableId = data.id;
+    handle.style.cssText = `
+position:absolute; right:0; bottom:0;
+width:14px; height:14px;
+cursor:nwse-resize;
+background:linear-gradient(135deg, transparent 50%, #3b5bdb 50%);
+z-index:2;
+`;
+    card.appendChild(handle);
 
     cardLayer.appendChild(card);
   });
@@ -302,8 +332,26 @@ function drawDragLine(x1, y1, x2, y2) {
   dctx.restore();
 }
 
-// Mousedown on column row = draw relation; header = move card via Cytoscape
+// Mousedown on resize handle = resize; column row = draw relation; header = move card via Cytoscape
 cardLayer.addEventListener('mousedown', function(e) {
+  const handle = e.target.closest('.resize-handle');
+  if (handle) {
+    e.stopPropagation();
+    e.preventDefault();
+    const card = handle.closest('.table-card');
+    const zoom = cy.zoom();
+    resizeState = {
+      tableId: handle.dataset.tableId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: parseFloat(card.style.width) / zoom,
+      startH: parseFloat(card.style.height) / zoom,
+      zoom
+    };
+    cardLayer.style.cursor = 'nwse-resize';
+    return;
+  }
+
   const row  = e.target.closest('.col-row-el');
   const card = e.target.closest('.table-card');
   if (!card) return;
@@ -347,6 +395,18 @@ cardLayer.addEventListener('mousedown', function(e) {
 });
 
 document.addEventListener('mousemove', function(e) {
+  if (resizeState) {
+    const dx = (e.clientX - resizeState.startX) / resizeState.zoom;
+    const dy = (e.clientY - resizeState.startY) / resizeState.zoom;
+    nodeSizes[resizeState.tableId] = {
+      width:  Math.max(MIN_W, resizeState.startW + dx),
+      height: Math.max(MIN_H, resizeState.startH + dy)
+    };
+    renderCards();
+    drawEdges();
+    return;
+  }
+
   if (!dragState) return;
   const rect = cyContainer.getBoundingClientRect();
   const mx   = e.clientX - rect.left;
@@ -376,6 +436,12 @@ document.addEventListener('mousemove', function(e) {
 });
 
 document.addEventListener('mouseup', function(e) {
+  if (resizeState) {
+    resizeState = null;
+    cardLayer.style.cursor = '';
+    return;
+  }
+
   if (!dragState) return;
   clearDragLine();
   cardLayer.style.cursor = '';

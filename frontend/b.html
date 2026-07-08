@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RelMap — SQL Assist</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1b2a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e9ecef;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    background: #111f30;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #toolbar h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #74c0fc;
+    letter-spacing: 0.5px;
+    margin-right: auto;
+  }
+  a.navlink {
+    font-size: 13px;
+    color: #a5c8ff;
+    text-decoration: none;
+    padding: 6px 10px;
+  }
+  a.navlink:hover { text-decoration: underline; }
+
+  #config-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #111f30;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #config-bar label { font-size: 12px; color: #74c0fc; white-space: nowrap; }
+  #configInput {
+    flex: 1;
+    background: #16233c;
+    border: 1px solid #2c4a7c;
+    border-radius: 4px;
+    color: #e9ecef;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-family: 'Consolas', monospace;
+  }
+  #configInput:focus { outline: none; border-color: #3b5bdb; }
+
+  #main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  #file-panel {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid #1e3050;
+    overflow-y: auto;
+    padding: 10px;
+  }
+  #file-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  #file-panel-header span { font-size: 12px; color: #74c0fc; font-weight: 600; }
+  .file-row {
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    color: #ced4da;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+  .file-row:hover { background: #16233c; }
+  .file-row.selected { background: #1c2d4f; border: 1px solid #3b5bdb; color: #a5c8ff; }
+  .empty-hint { color: #5c7a9e; font-size: 13px; padding: 10px; }
+
+  #content-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #content-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #content-toolbar .filename { font-size: 13px; color: #e9ecef; font-weight: 600; margin-right: auto; }
+  button {
+    padding: 7px 16px;
+    border-radius: 5px;
+    border: 1px solid #3b5bdb;
+    background: #1c2d4f;
+    color: #a5c8ff;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { background: #263d6b; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  #body-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #compare {
+    display: flex;
+    min-height: 280px;
+  }
+  .sql-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #1e3050;
+  }
+  .sql-col:last-child { border-right: none; }
+  .sql-col-header {
+    padding: 8px 14px;
+    font-size: 11px;
+    color: #74c0fc;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #111f30;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  .sql-col pre {
+    margin: 0;
+    padding: 14px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #ced4da;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  #analysis-panel {
+    border-top: 1px solid #1e3050;
+    padding: 14px 16px;
+    display: none;
+  }
+  #analysis-panel.show { display: block; }
+  .analysis-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  .analysis-badge.issues { background: #3a1f1f; color: #ff9f9f; border: 1px solid #7c3a3a; }
+  .analysis-badge.clean { background: #1a3a24; color: #8fe0a8; border: 1px solid #2f6b45; }
+  #issuesList {
+    margin: 0 0 12px 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: #ffb3b3;
+    line-height: 1.6;
+  }
+  #explanationText {
+    font-size: 13px;
+    color: #ced4da;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .analysis-label {
+    font-size: 11px;
+    color: #74c0fc;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  #status-line {
+    padding: 8px 16px;
+    font-size: 12px;
+    color: #5c7a9e;
+    border-top: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #status-line.ok { color: #69db7c; }
+  #status-line.err { color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>⬡ RelMap — SQL Assist</h1>
+  <a class="navlink" href="index.html">Model View</a>
+  <a class="navlink" href="import.html">Import Tables</a>
+  <a class="navlink" href="ai.html">AI Chat</a>
+</div>
+
+<div id="config-bar">
+  <label for="configInput">Paste config:</label>
+  <input type="text" id="configInput" placeholder="https://aistudio.wdc.com/user/.../proxy/8903/sql-agent/invoke|TOKEN" />
+</div>
+
+<div id="main">
+  <div id="file-panel">
+    <div id="file-panel-header">
+      <span>SQL Files</span>
+      <button id="refreshBtn" onclick="refreshFiles()" style="padding:3px 8px;font-size:11px;">Refresh</button>
+    </div>
+    <div id="file-list">
+      <div class="empty-hint">Click Refresh to list files in the SQL folder.</div>
+    </div>
+  </div>
+
+  <div id="content-panel">
+    <div id="content-toolbar">
+      <span class="filename" id="selectedFilename">No file selected</span>
+      <button id="askBtn" onclick="askAI()" disabled>Ask AI</button>
+    </div>
+
+    <div id="body-scroll">
+      <div id="compare">
+        <div class="sql-col">
+          <div class="sql-col-header">Original</div>
+          <pre id="originalSql">Select a file to preview its contents.</pre>
+        </div>
+        <div class="sql-col">
+          <div class="sql-col-header">AI Fixed Query</div>
+          <pre id="suggestedSql">Suggestions will appear here after you click "Ask AI".</pre>
+        </div>
+      </div>
+
+      <div id="analysis-panel">
+        <span id="analysisBadge" class="analysis-badge"></span>
+        <div class="analysis-label">Issues Found</div>
+        <ul id="issuesList"></ul>
+        <div class="analysis-label">Explanation</div>
+        <div id="explanationText"></div>
+      </div>
+    </div>
+
+    <div id="status-line"></div>
+  </div>
+</div>
+
+<script src="b.js"></script>
+</body>
+</html>

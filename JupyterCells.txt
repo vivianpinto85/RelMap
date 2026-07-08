@@ -1,0 +1,160 @@
+# ── 0. Shut down any previously running server ────────────────────────────────
+try:
+    server.should_exit = True
+    server.force_exit = True
+    print("⏹ Previous server stopped", flush=True)
+except NameError:
+    pass
+
+# ── 1. Install missing packages if needed ─────────────────────────────────────
+import subprocess, sys, importlib.util
+
+def install_if_missing(package, import_name=None):
+    import_name = import_name or package.split("[")[0].replace("-", "_")
+    if importlib.util.find_spec(import_name) is None:
+        print(f"Installing {package}...", flush=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package, "-q"])
+        print(f"✅ {package} installed.", flush=True)
+
+install_if_missing("fastapi")
+install_if_missing("langserve[all]", "langserve")
+install_if_missing("uvicorn[standard]", "uvicorn")
+install_if_missing("langchain")
+install_if_missing("langgraph")
+install_if_missing("langchain-openai", "langchain_openai")
+install_if_missing("nest_asyncio", "nest_asyncio")
+
+# ── 2. Imports ────────────────────────────────────────────────────────────────
+from langchain_openai import ChatOpenAI
+from langgraph.graph import StateGraph, MessagesState, END
+from langchain_core.messages import SystemMessage
+from fastapi import FastAPI
+from langserve import add_routes
+import threading, uvicorn, time, socket, nest_asyncio
+
+nest_asyncio.apply()
+
+# ── 3. Find a free port ───────────────────────────────────────────────────────
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+PORT = find_free_port()
+
+# ── 4. LLM ────────────────────────────────────────────────────────────────────
+llm = ChatOpenAI(
+    base_url="http://localhost:8080/v1",
+    api_key="dummy",
+    model="@bedrock-sbx/us.anthropic.claude-sonnet-4-6",
+    temperature=0,
+)
+
+# ── 5. Agent ──────────────────────────────────────────────────────────────────
+def call_model(state: MessagesState) -> dict:
+    system = SystemMessage(content="You are a helpful assistant. Be concise.")
+    response = llm.invoke([system] + state["messages"])
+    return {"messages": [response]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("model", call_model)
+graph.set_entry_point("model")
+graph.add_edge("model", END)
+agent = graph.compile()
+print("✅ Agent compiled", flush=True)
+
+# ── 6. Serve ──────────────────────────────────────────────────────────────────
+app = FastAPI(title="chat-agent")
+add_routes(app, agent, path="/agent")
+
+config = uvicorn.Config(app, host="0.0.0.0", port=PORT, log_level="info")
+server = uvicorn.Server(config)
+
+def run_server():
+    try:
+        server.run()
+    except Exception as e:
+        print(f"❌ Server error: {e}", flush=True)
+
+thread = threading.Thread(target=run_server, daemon=True)
+thread.start()
+time.sleep(3)
+print(f"✅ Server running on port {PORT}", flush=True)
+print(f"   Invoke:     POST http://localhost:{PORT}/agent/invoke", flush=True)
+print(f"   Playground: http://localhost:{PORT}/agent/playground", flush=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Get a AI base_url
+import json, os
+
+token = os.environ.get("JUPYTERHUB_API_TOKEN", "REPLACE_ME")
+username = os.environ.get("JUPYTERHUB_USER", "vivian.pinto")  # falls back if not set
+
+url = f"https://aistudio.wdc.com/user/{username}/proxy/{PORT}/agent/invoke"
+
+payload = {"input": {"messages": [{"type": "human", "content": "hi"}]}}
+json_str = json.dumps(payload)
+
+# PowerShell-safe: write JSON as a file instead of inline -d, avoids quoting corruption
+ps_json_literal = json_str.replace('"', '\\"')  # for the here-string below
+
+curl_cmd = (
+    f"'{json_str}' | Out-File -Encoding utf8 payload.json\n"
+    f'curl.exe -X POST "{url}" '
+    f'-H "Authorization: token {token}" '
+    f'-H "Content-Type: application/json" '
+    f'--data "@payload.json"'
+)
+
+print("── Paste this into PowerShell ──")
+print(curl_cmd)
+config_line = f"{url}|{token}"
+print(config_line)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Testing
+import requests
+r = requests.post(f"http://localhost:{PORT}/agent/invoke", json={
+    "input": {"messages": [{"type": "human", "content": "hi"}]}
+})
+print(r.json()["output"]["messages"][-1]["content"])
+
+
+
+
+
+Force STopping a server
+try:
+    server.force_exit = True
+    server.should_exit = True
+    thread.join(timeout=5)
+    print(f"⏹ Server stopped (alive: {thread.is_alive()})", flush=True)
+except NameError:
+    print("⚠ No server found in this notebook", flush=True)

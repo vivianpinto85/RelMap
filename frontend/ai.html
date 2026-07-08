@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RelMap — AI Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1b2a;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e9ecef;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    background: #111f30;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #toolbar h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #74c0fc;
+    letter-spacing: 0.5px;
+    margin-right: auto;
+  }
+  a.navlink {
+    font-size: 13px;
+    color: #a5c8ff;
+    text-decoration: none;
+    padding: 6px 10px;
+  }
+  a.navlink:hover { text-decoration: underline; }
+
+  #config-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: #111f30;
+    border-bottom: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #config-bar label { font-size: 12px; color: #74c0fc; white-space: nowrap; }
+  #configInput {
+    flex: 1;
+    background: #16233c;
+    border: 1px solid #2c4a7c;
+    border-radius: 4px;
+    color: #e9ecef;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-family: 'Consolas', monospace;
+  }
+  #configInput:focus { outline: none; border-color: #3b5bdb; }
+  #status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #5c7a9e;
+    flex-shrink: 0;
+  }
+  #status-dot.ok { background: #69db7c; }
+  #status-dot.err { background: #ff6b6b; }
+  #status-text { font-size: 12px; color: #5c7a9e; white-space: nowrap; }
+
+  #chat-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: #2c4a7c;
+    color: #e9ecef;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.ai {
+    align-self: flex-start;
+    background: #1a2740;
+    border: 1px solid #2c4a7c;
+    color: #ced4da;
+    border-bottom-left-radius: 2px;
+  }
+  .msg.error {
+    align-self: flex-start;
+    background: #3a1f1f;
+    border: 1px solid #7c3a3a;
+    color: #ffb3b3;
+  }
+  .msg.pending { color: #5c7a9e; font-style: italic; }
+  .empty-hint { color: #5c7a9e; font-size: 13px; margin: auto; text-align: center; max-width: 400px; }
+
+  #input-bar {
+    display: flex;
+    gap: 10px;
+    padding: 14px 18px;
+    background: #111f30;
+    border-top: 1px solid #1e3050;
+    flex-shrink: 0;
+  }
+  #msg-input {
+    flex: 1;
+    background: #16233c;
+    border: 1px solid #2c4a7c;
+    border-radius: 6px;
+    color: #e9ecef;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    resize: none;
+    font-family: inherit;
+  }
+  #msg-input:focus { outline: none; border-color: #3b5bdb; }
+  button {
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: 1px solid #3b5bdb;
+    background: #1c2d4f;
+    color: #a5c8ff;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { background: #263d6b; }
+  button:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>⬡ RelMap — AI Agent</h1>
+  <a class="navlink" href="index.html">Model View</a>
+  <a class="navlink" href="import.html">Import Tables</a>
+</div>
+
+<div id="config-bar">
+  <label for="configInput">Paste config:</label>
+  <input type="text" id="configInput" placeholder="https://aistudio.wdc.com/user/.../proxy/PORT/agent/invoke|TOKEN" />
+  <span id="status-dot"></span>
+  <span id="status-text">Not connected</span>
+</div>
+
+<div id="chat-panel">
+  <div class="empty-hint">Paste the single line printed by your notebook cell above (url|token), then type a message below.<br>Nothing is saved permanently — this clears if you reload the page.</div>
+</div>
+
+<div id="input-bar">
+  <textarea id="msg-input" rows="1" placeholder="Type a message... (Enter to send, Shift+Enter for newline)"></textarea>
+  <button id="sendBtn" onclick="sendMessage()">Send</button>
+</div>
+
+<script src="ai.js"></script>
+</body>
+</html>
