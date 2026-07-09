@@ -37,6 +37,10 @@ async def read_sql_file(filename: str):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"File '{filename}' not found")
 
+
+
+
+
 @app.post("/sql/ask-ai")
 async def ask_ai(request: dict):
     filename = request.get("filename", "")
@@ -44,11 +48,50 @@ async def ask_ai(request: dict):
     token = request.get("token", "")
     dialect = request.get("dialect", "redshift")
 
-    # Placeholder — real agent call to be solved separately
+    saved_as = f"fixed_{filename}"
+
+    # Placeholder fixed query
+    fixed_query = "-- AI suggestion will go here\nSELECT * FROM table;"
+
+    # Save fixed file to disk
+    try:
+        with open(os.path.join("sql", saved_as), 'w', encoding='utf-8') as f:
+            f.write(fixed_query)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
+
     return {
-        "fixed_query": "-- AI suggestion will go here\nSELECT * FROM table;",
-        "saved_as": f"fixed_{filename}",
+        "fixed_query": fixed_query,
+        "saved_as": saved_as,
         "has_issues": False,
         "issues": [],
         "explanation": "AI analysis complete."
     }
+
+@app.post("/sql/save")
+async def save_sql_file(request: dict):
+    filename = request.get("filename", "")
+    content = request.get("content", "")
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    try:
+        with open(os.path.join("sql", filename), 'w', encoding='utf-8') as f:
+            f.write(content)
+        return {"saved_as": filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+# @app.post("/sql/ask-ai")
+# async def ask_ai(request: dict):
+#     filename = request.get("filename", "")
+#     url = request.get("url", "")
+#     token = request.get("token", "")
+#     dialect = request.get("dialect", "redshift")
+
+#     # Placeholder — real agent call to be solved separately
+#     return {
+#         "fixed_query": "-- AI suggestion will go here\nSELECT * FROM table;",
+#         "saved_as": f"fixed_{filename}",
+#         "has_issues": False,
+#         "issues": [],
+#         "explanation": "AI analysis complete."
+#     }

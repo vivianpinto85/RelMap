@@ -53,6 +53,21 @@ async function refreshFiles() {
   }
 }
 
+// function renderFileList(files) {
+//   fileList.innerHTML = "";
+//   if (files.length === 0) {
+//     fileList.innerHTML = `<div class="empty-hint">No .sql files found in the SQL folder.</div>`;
+//     return;
+//   }
+//   files.forEach(name => {
+//     const row = document.createElement("div");
+//     row.className = "file-row";
+//     row.textContent = name;
+//     row.addEventListener("click", () => selectFile(name, row));
+//     fileList.appendChild(row);
+//   });
+// }
+
 function renderFileList(files) {
   fileList.innerHTML = "";
   if (files.length === 0) {
@@ -62,6 +77,8 @@ function renderFileList(files) {
   files.forEach(name => {
     const row = document.createElement("div");
     row.className = "file-row";
+    // restore selected state if this was the selected file
+    if (name === currentFile) row.classList.add("selected");
     row.textContent = name;
     row.addEventListener("click", () => selectFile(name, row));
     fileList.appendChild(row);
@@ -104,15 +121,14 @@ async function askAI() {
   setStatus("Sending query to sql-agent...");
 
   try {
-    const res = await fetch("/sql/ask-ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filename: currentFile,
-        url: config.url,
-        token: config.token,
-        dialect: "redshift"
-      })
+    // Read SQL content already loaded in the UI
+    const query = originalSqlEl.textContent;
+
+    // Call Jupyter agent directly from browser — session cookie handles auth
+    const agentUrl = config.url; // e.g. https://aistudio.wdc.com/user/.../proxy/PORT/sql-agent
+    const res = await fetch(`${agentUrl}/analyze?query=${encodeURIComponent(query)}&dialect=redshift`, {
+      method: "GET",
+      credentials: "include",  // sends JupyterHub session cookie automatically
     });
 
     if (!res.ok) {
@@ -122,7 +138,17 @@ async function askAI() {
 
     const data = await res.json();
     suggestedSqlEl.textContent = data.fixed_query;
-    setStatus(`Saved as ${data.saved_as}`, "ok");
+
+    // Save the fixed file via backend
+    await fetch("/sql/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: `fixed_${currentFile}`,
+        content: data.fixed_query
+      })
+    });
+    setStatus(`Saved as fixed_${currentFile}`, "ok");
 
     // Render structured analysis
     if (data.has_issues) {
@@ -142,7 +168,17 @@ async function askAI() {
     analysisPanel.classList.add("show");
 
     // Refresh file list so the new file shows up
-    refreshFiles();
+    // Refresh file list and select the new fixed file
+    await refreshFiles();
+    const newFile = data.saved_as;
+    const rows = fileList.querySelectorAll(".file-row");
+    rows.forEach(row => {
+      if (row.textContent === newFile) {
+        row.classList.add("selected");
+        currentFile = newFile;
+        selectedFilename.textContent = newFile;
+      }
+    });
 
   } catch (err) {
     suggestedSqlEl.textContent = `Failed: ${err.message}`;
