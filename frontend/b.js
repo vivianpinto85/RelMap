@@ -122,13 +122,15 @@ async function askAI() {
 
   try {
     // Read SQL content already loaded in the UI
-    const query = originalSqlEl.textContent;
-
-    // Call Jupyter agent directly from browser — session cookie handles auth
-    const agentUrl = config.url; // e.g. https://aistudio.wdc.com/user/.../proxy/PORT/sql-agent
-    const res = await fetch(`${agentUrl}/analyze?query=${encodeURIComponent(query)}&dialect=redshift`, {
-      method: "GET",
-      credentials: "include",  // sends JupyterHub session cookie automatically
+    const res = await fetch("/sql/ask-ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: currentFile,
+        url: config.url,
+        token: config.token,
+        dialect: "redshift"
+      })
     });
 
     if (!res.ok) {
@@ -169,8 +171,9 @@ async function askAI() {
 
     // Refresh file list so the new file shows up
     // Refresh file list and select the new fixed file
+    // Refresh file list and select the new fixed file
+    const newFile = `fixed_${currentFile}`;
     await refreshFiles();
-    const newFile = data.saved_as;
     const rows = fileList.querySelectorAll(".file-row");
     rows.forEach(row => {
       if (row.textContent === newFile) {
@@ -179,6 +182,7 @@ async function askAI() {
         selectedFilename.textContent = newFile;
       }
     });
+  
 
   } catch (err) {
     suggestedSqlEl.textContent = `Failed: ${err.message}`;

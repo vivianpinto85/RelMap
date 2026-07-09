@@ -40,7 +40,6 @@ async def read_sql_file(filename: str):
 
 
 
-
 @app.post("/sql/ask-ai")
 async def ask_ai(request: dict):
     filename = request.get("filename", "")
@@ -48,36 +47,48 @@ async def ask_ai(request: dict):
     token = request.get("token", "")
     dialect = request.get("dialect", "redshift")
 
-    saved_as = f"fixed_{filename}"
-
-    # Placeholder fixed query
-    fixed_query = "-- AI suggestion will go here\nSELECT * FROM table;"
-
-    # Save fixed file to disk
-    try:
-        with open(os.path.join("sql", saved_as), 'w', encoding='utf-8') as f:
-            f.write(fixed_query)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
-
-    return {
-        "fixed_query": fixed_query,
-        "saved_as": saved_as,
-        "has_issues": False,
-        "issues": [],
-        "explanation": "AI analysis complete."
-    }
-
-@app.post("/sql/save")
-async def save_sql_file(request: dict):
-    filename = request.get("filename", "")
-    content = request.get("content", "")
+    if not url or not filename:
+        raise HTTPException(status_code=400, detail="url and filename required")
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
+
     try:
-        with open(os.path.join("sql", filename), 'w', encoding='utf-8') as f:
-            f.write(content)
-        return {"saved_as": filename}
+        with open(os.path.join("sql", filename), 'r', encoding='utf-8') as f:
+            query = f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"File '{filename}' not found")
+
+    try:
+        headers = {"Authorization": f"token {token}"} if token else {}
+
+        r = requests.get(
+            f"{url}/analyze",
+            params={"query": query, "dialect": dialect},
+            headers=headers,
+            timeout=60,
+            verify=False
+        )
+
+        print(f"Agent status: {r.status_code}", flush=True)
+        print(f"Agent body: {r.text[:300]}", flush=True)
+
+        if not r.ok:
+            raise HTTPException(status_code=502, detail=f"Agent error {r.status_code}: {r.text[:200]}")
+
+        result = r.json()
+        saved_as = f"fixed_{filename}"
+        with open(os.path.join("sql", saved_as), 'w', encoding='utf-8') as f:
+            f.write(result["fixed_query"])
+
+        return {
+            "has_issues": result["has_issues"],
+            "issues": result["issues"],
+            "fixed_query": result["fixed_query"],
+            "saved_as": saved_as,
+            "explanation": result["explanation"],
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 # @app.post("/sql/ask-ai")
