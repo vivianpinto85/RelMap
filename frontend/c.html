@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RelMap — SQL Debug Notebook  c.html</title>
+
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>⬡ RelMap — SQL Debug Notebook</h1>
+  <a class="navlink" href="index.html">Model View</a>
+  <a class="navlink" href="b.html">SQL Assist</a>
+  <a class="navlink" href="ai.html">AI Chat</a>
+</div>
+
+<div id="config-bar">
+  <label>Chat Agent:</label>
+  <input class="config-input" id="chatConfig"
+    placeholder="https://aistudio.wdc.com/.../proxy/PORT/agent|TOKEN" />
+</div>
+
+<div id="main">
+
+  <div id="file-panel">
+    <div id="file-panel-header">
+      <span>SQL Files</span>
+      <button class="btn" id="btnRefresh" style="padding:3px 8px;font-size:11px;">Refresh</button>
+    </div>
+    <div id="file-list">
+      <div class="empty-hint">Click Refresh to list files.</div>
+    </div>
+  </div>
+
+  <div id="notebook">
+
+    <!-- CELL 1 -->
+    <div class="cell" id="cell-query">
+      <div class="cell-header">
+        <span class="cell-number">[1]</span>
+        <span class="cell-title">SQL Query</span>
+        <button class="btn" id="btnAnalyze">▶ Analyze with AI</button>
+      </div>
+      <div class="cell-body">
+        <textarea class="sql-editor" id="queryEditor"
+          placeholder="Paste or select a SQL query from the file list..."></textarea>
+        <div class="cell-status" id="status1"></div>
+      </div>
+    </div>
+
+    <!-- CELL 2 -->
+    <div class="cell hidden" id="cell-analysis">
+      <div class="cell-header">
+        <span class="cell-number">[2]</span>
+        <span class="cell-title">AI Analysis</span>
+      </div>
+      <div class="cell-body">
+        <div class="prose" id="analysisOutput"></div>
+      </div>
+    </div>
+
+    <!-- CELL 3 -->
+    <div class="cell hidden" id="cell-debug">
+      <div class="cell-header">
+        <span class="cell-number">[3]</span>
+        <span class="cell-title">Debug Query — AI Suggested</span>
+        <button class="btn btn-run" id="btnRunDebug">▶ Run on Redshift</button>
+      </div>
+      <div class="cell-body">
+        <textarea class="sql-editor" id="debugEditor" style="min-height:100px;"></textarea>
+        <div class="cell-status" id="status3"></div>
+      </div>
+    </div>
+
+    <!-- CELL 4 -->
+    <div class="cell hidden" id="cell-results">
+      <div class="cell-header">
+        <span class="cell-number">[4]</span>
+        <span class="cell-title">Redshift Results</span>
+        <button class="btn" id="btnInterpret">▶ AI Interpret</button>
+      </div>
+      <div class="cell-body">
+        <div id="resultsTable"></div>
+        <div class="cell-status" id="status4"></div>
+      </div>
+    </div>
+
+    <!-- CELL 5
+    <div class="cell hidden" id="cell-interpret">
+      <div class="cell-header">
+        <span class="cell-number">[5]</span>
+        <span class="cell-title">AI Interpretation + Follow-up Queries</span>
+      </div>
+      <div class="cell-body">
+        <div class="prose" id="interpretOutput"></div>
+        <div id="followupList"></div>
+        <div class="cell-status" id="status5"></div>
+      </div>
+    </div>
+
+   CELL 6     <div class="cell hidden" id="cell-followup-results">
+      <div class="cell-header">
+        <span class="cell-number">[6]</span>
+        <span class="cell-title">Follow-up Results</span>
+        <button class="btn btn-save" id="btnSave">💾 Save all to local Postgres</button>
+        <button class="btn btn-ai" id="btnGenerateInserts">🤖 Generate Joinable INSERTs</button>
+      </div>
+      <div class="cell-body">
+        <div id="followupResultsContainer"></div>
+        <div class="cell-status" id="status6"></div>
+      </div>
+    </div> -->
+
+    <!-- CELL 6b -->
+    <!-- <div class="cell hidden" id="cell-inserts">
+      <div class="cell-header">
+        <span class="cell-number">[6b]</span>
+        <span class="cell-title">AI Generated INSERT Statements</span>
+        <button class="btn btn-run" id="btnRunInserts">▶ Execute on Local Postgres</button>
+      </div>
+      <div class="cell-body">
+        <div class="prose" id="insertsAnalysis"></div>
+        <div id="insertsList"></div>
+        <div class="cell-status" id="status6b"></div>
+      </div>
+    </div> -->
+
+
+
+    <!-- CELL 5 — AI Interpretation + dynamic follow-up cells -->
+<div class="cell hidden" id="cell-interpret">
+  <div class="cell-header">
+    <span class="cell-number">[5]</span>
+    <span class="cell-title">AI Interpretation</span>
+  </div>
+  <div class="cell-body">
+    <div class="prose" id="interpretOutput"></div>
+  </div>
+</div>
+
+<!-- Dynamic follow-up cells will be injected here -->
+<div id="followupCellsContainer"></div>
+
+<!-- CELL 6 — Actions (appears only after all follow-ups complete) -->
+<div class="cell hidden" id="cell-followup-actions">
+  <div class="cell-header">
+    <span class="cell-number">[6]</span>
+    <span class="cell-title">All follow-ups complete — Next steps</span>
+    <button class="btn btn-save" id="btnSave">💾 Save all to local Postgres</button>
+    <button class="btn btn-ai" id="btnGenerateInserts">🤖 Generate Joinable INSERTs</button>
+  </div>
+  <div class="cell-body">
+    <div class="cell-status" id="status6"></div>
+  </div>
+</div>
+
+<!-- CELL 6b — AI generated INSERTs (unchanged) -->
+<div class="cell hidden" id="cell-inserts">
+  <div class="cell-header">
+    <span class="cell-number">[6b]</span>
+    <span class="cell-title">AI Generated INSERT Statements</span>
+    <button class="btn btn-run" id="btnRunInserts">▶ Execute on Local Postgres</button>
+  </div>
+  <div class="cell-body">
+    <div class="prose" id="insertsAnalysis"></div>
+    <div id="insertsList"></div>
+    <div class="cell-status" id="status6b"></div>
+  </div>
+</div>
+
+
+
+    <!-- CELL 7 -->
+    <div class="cell hidden" id="cell-notes">
+      <div class="cell-header">
+        <span class="cell-number">[7]</span>
+        <span class="cell-title">📝 Your Notes</span>
+        <button class="btn" id="btnSaveNotes">Save Notes</button>
+      </div>
+      <div class="cell-body">
+        <div class="notes-label">Add your observations — included in the AI knowledge file</div>
+        <textarea class="notes-area" id="notesArea"
+          placeholder="e.g. 'The join on container_id sometimes returns nulls for older lots...'"></textarea>
+        <div class="cell-status" id="status7"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<link rel="stylesheet" href="c.css">
+<script src="c.js"></script>
+</body>
+</html>

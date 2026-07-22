@@ -1,6 +1,8 @@
+#app.py
 from fastapi import FastAPI
 from routes import schema, validate, relation, query, snapshot
 from fastapi.staticfiles import StaticFiles
+from routes import schema, validate, relation, query, snapshot, sql_debug
 
 app = FastAPI(title="RelMap")
 app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
@@ -10,7 +12,7 @@ app.include_router(validate.router, prefix="/validate", tags=["Validation"])
 app.include_router(relation.router, prefix="/relation", tags=["Relations"])
 app.include_router(query.router, prefix="/query", tags=["Query"])
 app.include_router(snapshot.router, prefix="/snapshot", tags=["Snapshots"])
-
+app.include_router(sql_debug.router, prefix="/debug", tags=["SQL Debug"])
 @app.get("/")
 def root():
     return {"message": "Welcome to RelMap API"}

@@ -38,3 +38,33 @@ def create_local_table(schema: str, table_name: str, columns):
     conn.commit()
     conn.close()
     return ddl
+
+
+
+def insert_sample_rows(schema: str, table: str, columns: list, rows: list):
+    """Insert sample rows into a local Postgres table."""
+    import psycopg2
+    conn = psycopg2.connect(
+        dbname="heads01", user="1", password="1", host="localhost", port="5432"
+    )
+    cur = conn.cursor()
+    schema_q = schema.lower()
+    table_q  = table.lower()
+    col_list = ", ".join(f'"{c.lower()}"' for c in columns)
+    placeholders = ", ".join(["%s"] * len(columns))
+    inserted = 0
+    skipped  = 0
+    for row in rows:
+        try:
+            cur.execute(
+                f'INSERT INTO "{schema_q}"."{table_q}" ({col_list}) VALUES ({placeholders}) ON CONFLICT DO NOTHING',
+                row
+            )
+            inserted += 1
+        except Exception:
+            conn.rollback()
+            skipped += 1
+            continue
+    conn.commit()
+    conn.close()
+    return {"inserted": inserted, "skipped": skipped}

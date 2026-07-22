@@ -70,3 +70,21 @@ def fetch_schema_tree():
     for schema, table in rows:
         tree.setdefault(schema, []).append(table)
     return tree
+
+
+def execute_query(sql: str, limit: int = 200) -> dict:
+    """Run an arbitrary SELECT on Redshift, return columns + rows."""
+    conn = get_redshift_connection()
+    cur = conn.cursor()
+    try:
+        # Safety: wrap in a LIMIT if not already present
+        safe_sql = sql.strip().rstrip(";")
+        if "limit" not in safe_sql.lower():
+            safe_sql = f"{safe_sql} LIMIT {limit}"
+        cur.execute(safe_sql)
+        columns = [desc[0] for desc in cur.description]
+        rows = [list(row) for row in cur.fetchall()]
+        return {"columns": columns, "rows": rows, "count": len(rows)}
+    finally:
+        cur.close()
+        conn.close()

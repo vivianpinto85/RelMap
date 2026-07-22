@@ -1,14 +1,37 @@
 # backend/main.py
 from fastapi import FastAPI, HTTPException
-from routes import schema, relation, sql_agent
-import os
+from routes import schema, relation, sql_agent,sql_knowledge  ,sql_debug,sql1
+import os,requests  
 
 app = FastAPI()
 
 app.include_router(schema.router)
-app.include_router(relation.router, prefix="/relation")
-app.include_router(sql_agent.router, prefix="/agent")
+print(f"[DEBUG] After schema: total routes = {len(app.routes)}", flush=True)
 
+app.include_router(relation.router, prefix="/relation")
+print(f"[DEBUG] After relation: total routes = {len(app.routes)}", flush=True)
+
+app.include_router(sql_agent.router, prefix="/agent")
+print(f"[DEBUG] After sql_agent: total routes = {len(app.routes)}", flush=True)
+
+app.include_router(sql_knowledge.router, prefix="/sql")
+print(f"[DEBUG] After sql_knowledge: total routes = {len(app.routes)}", flush=True)
+
+app.include_router(sql_debug.router, prefix="/debug")
+print(f"[DEBUG] After sql_debug: total routes = {len(app.routes)}", flush=True)
+
+app.include_router(sql1.router, prefix="/debug")
+print(f"[DEBUG] After sql1: total routes = {len(app.routes)}", flush=True)
+
+@app.on_event("startup")
+async def list_routes():
+    print("\n[DEBUG] === Registered routes ===", flush=True)
+    for route in app.routes:
+        methods = list(route.methods) if hasattr(route, "methods") else "N/A"
+        path = getattr(route, "path", str(route))
+        print(f"  {methods} {path}  ({type(route).__name__})", flush=True)
+    print("[DEBUG] === End routes ===\n", flush=True)
+    
 from fastapi.staticfiles import StaticFiles
 app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
 
@@ -91,18 +114,3 @@ async def ask_ai(request: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-# @app.post("/sql/ask-ai")
-# async def ask_ai(request: dict):
-#     filename = request.get("filename", "")
-#     url = request.get("url", "")
-#     token = request.get("token", "")
-#     dialect = request.get("dialect", "redshift")
-
-#     # Placeholder — real agent call to be solved separately
-#     return {
-#         "fixed_query": "-- AI suggestion will go here\nSELECT * FROM table;",
-#         "saved_as": f"fixed_{filename}",
-#         "has_issues": False,
-#         "issues": [],
-#         "explanation": "AI analysis complete."
-#     }
